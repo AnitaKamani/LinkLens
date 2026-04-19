@@ -61,7 +61,6 @@ function applySettingsToForm(s) {
 }
 
 async function checkPageAndRender(settings) {
-  // Hide everything first
   profilePreview.style.display = 'none';
   notLinkedin.style.display    = 'none';
   noSettings.style.display     = 'none';
@@ -83,20 +82,31 @@ async function checkPageAndRender(settings) {
     return;
   }
 
-  // Try to get profile data from content script
-  try {
-    const response = await chrome.tabs.sendMessage(tab.id, { action: 'getProfile' });
-    if (response && response.name) {
-      profileData = response;
-      previewName.textContent     = response.name || '—';
-      previewHeadline.textContent = response.headline || '';
-      profilePreview.style.display = 'block';
-    }
-  } catch (_) {
-    // Content script may not be injected yet (non-profile page) — that's fine
-  }
-
+  // Show SCAN button only — no page interaction until the user clicks it
   scanBtn.style.display = 'block';
+}
+
+async function getProfileFromTab(tabId) {
+  // Try calling the extractor if content script is already injected
+  try {
+    const [{ result }] = await chrome.scripting.executeScript({
+      target: { tabId },
+      func: () => typeof window.linkLensExtract === 'function' ? window.linkLensExtract() : null,
+    });
+    if (result && result.name) return result;
+  } catch (_) {}
+
+  // Inject content script then call the extractor
+  try {
+    await chrome.scripting.executeScript({ target: { tabId }, files: ['scripts/content.js'] });
+    const [{ result }] = await chrome.scripting.executeScript({
+      target: { tabId },
+      func: () => window.linkLensExtract(),
+    });
+    if (result && result.name) return result;
+  } catch (_) {}
+
+  return null;
 }
 
 // ── Navigation ─────────────────────────────────────────────────────────────
@@ -122,8 +132,13 @@ providerBtns.forEach(btn => {
   });
 });
 
+const EYE_ON  = `<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>`;
+const EYE_OFF = `<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/>`;
+
 toggleKeyBtn.addEventListener('click', () => {
-  apiKeyInput.type = apiKeyInput.type === 'password' ? 'text' : 'password';
+  const showing = apiKeyInput.type === 'text';
+  apiKeyInput.type = showing ? 'password' : 'text';
+  document.getElementById('eye-icon').innerHTML = showing ? EYE_ON : EYE_OFF;
 });
 
 saveBtn.addEventListener('click', async () => {
@@ -152,11 +167,12 @@ function flashStatus(msg, isError = false) {
 // ── Scan ───────────────────────────────────────────────────────────────────
 
 scanBtn.addEventListener('click', runScan);
-resetBtn.addEventListener('click', async () => {
-  resultBox.style.display = 'none';
-  errorBox.style.display  = 'none';
-  scanBtn.style.display   = 'block';
-  if (profileData) profilePreview.style.display = 'block';
+resetBtn.addEventListener('click', () => {
+  resultBox.style.display      = 'none';
+  errorBox.style.display       = 'none';
+  profilePreview.style.display = 'none';
+  profileData                  = null;
+  scanBtn.style.display        = 'block';
 });
 
 async function runScan() {
@@ -166,14 +182,14 @@ async function runScan() {
     return;
   }
 
-  // Fetch profile data if we don't have it yet
-  if (!profileData) {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    try {
-      const response = await chrome.tabs.sendMessage(tab.id, { action: 'getProfile' });
-      if (response && response.name) profileData = response;
-    } catch (_) {}
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  if (!tab || !tab.url || !tab.url.includes('linkedin.com')) {
+    showError("This isn't a LinkedIn page. Navigate to a LinkedIn profile and try again.");
+    return;
   }
+
+  // Extract profile data on Scan click — nothing is read from the page before this
+  profileData = await getProfileFromTab(tab.id);
 
   if (!profileData || !profileData.name) {
     showError("Couldn't read profile data from this page. Make sure you're on a LinkedIn profile.");
@@ -301,7 +317,7 @@ async function callOpenAI(apiKey, systemPrompt, userPrompt) {
       'Content-Type':  'application/json',
     },
     body: JSON.stringify({
-      model:      'gpt-4o',
+      model:      'gpt-4o-mini',
       max_tokens: 200,
       messages: [
         { role: 'system', content: systemPrompt },

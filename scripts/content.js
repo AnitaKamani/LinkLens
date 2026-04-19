@@ -181,15 +181,5 @@ function extractMutualConnections() {
   return '';
 }
 
-// ── Message listener ───────────────────────────────────────────────────────
-
-chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
-  if (msg.action === 'getProfile') {
-    try {
-      sendResponse(extractProfile());
-    } catch (e) {
-      sendResponse({ error: e.message });
-    }
-  }
-  return true;
-});
+// Expose for direct executeScript invocation from popup
+window.linkLensExtract = extractProfile;

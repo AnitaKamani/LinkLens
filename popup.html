@@ -4,9 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>LinkLens</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <!-- MV3 blocks external stylesheets; using system font stack -->
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -19,8 +17,8 @@
       --green: #00c853;
       --red: #ff1744;
       --accent: #4fc3f7;
-      --mono: 'JetBrains Mono', monospace;
-      --sans: 'Inter', sans-serif;
+      --mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Consolas', ui-monospace, monospace;
+      --sans: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     }
 
     body {
@@ -379,7 +377,12 @@
         <label>API Key</label>
         <div class="api-key-wrap">
           <input type="password" id="api-key" placeholder="sk-ant-… or sk-…" autocomplete="off" />
-          <button class="toggle-key" id="toggle-key" title="Show/hide key">👁</button>
+          <button class="toggle-key" id="toggle-key" title="Show/hide key">
+            <svg id="eye-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+              <circle cx="12" cy="12" r="3"/>
+            </svg>
+          </button>
         </div>
       </div>
 
@@ -387,12 +390,12 @@
 
       <div class="field">
         <label>My Profile</label>
-        <textarea id="my-profile" placeholder="E.g. I'm a senior ML engineer at a Series B startup. I focus on LLM infra and ML systems. I'm interested in AI, data, and early-stage tech."></textarea>
+        <textarea id="my-profile" placeholder="E.g. Software engineer at a Series B startup. I work in backend systems and platform infra. Interested in distributed systems, open source, and early-stage tech."></textarea>
       </div>
 
       <div class="field">
         <label>Filter Criteria</label>
-        <textarea id="filter-criteria" placeholder="E.g. Keep people in AI, data science, ML, or at companies relevant to my career. Remove recruiters, random connections, and people with no professional overlap."></textarea>
+        <textarea id="filter-criteria" placeholder="E.g. Keep engineers, founders, and people working in tech. Remove recruiters, sales reps, and anyone with no clear professional overlap."></textarea>
       </div>
 
       <button class="save-btn" id="save-btn">SAVE SETTINGS</button>
